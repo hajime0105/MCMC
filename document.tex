@@ -1,0 +1,166 @@
+\documentclass[11pt, a4paper]{jarticle} 
+\usepackage{geometry}
+\geometry{letterpaper}   
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{ascmac}
+\usepackage{url}
+
+\usepackage{amsmath}	%場合分け
+\usepackage{bm}		%ベクトル
+
+\title{マルコフ連鎖モンテカルロ法\\(MCMC;Markov Chain Monte Carlo method)}
+\author{古作 創}
+\date{2017年5月26日}
+
+\begin{document}
+
+\maketitle
+\section{概要}
+マルコフ連鎖モンテカルロ法(MCMC;Markov Chain Monte Carlo method)とは，マルコフ連鎖の性質をもつ確率分布を用いつつ乱数でサンプリングを行うモンテカルロ法を組み合わせたサンプリング手法のことである．
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{マルコフ連鎖}
+マルコフ連鎖とは，現在の値$z^{(\tau)}$からのみ次の値$z^{(t+1)}$は決定することをである．次の値$z^{(\tau+1)}$を決める際には現在の値$z^{(\tau)}$よりも前の値には依存しない．マルコフ連鎖の性質をもつ離散的なデータを持つ確率過程をマルコフ過程と呼ぶ．\\
+　マルコフ連鎖は現在の値が未来に影響するため独立ではない．そのため，現在発生させた乱数をもとに次にどのような乱数を発生させたら効率が良いかを調整する必要がある．その調整のためには，「詳細釣り合い条件」「エルゴード性」の2つの性質について考慮する必要がある．逆に，MCMCとはこの2つの性質をもたせたマルコフ連鎖を利用したモンテカルロ法による積分によって，未知の母数を効率良く求める手法のことである．
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{詳細釣り合い条件}
+確率分布$p(\theta)$とマルコフ連鎖$z^{(1)}, z^{(2)}, \cdots,  z^{(\tau-2)}, z^{(\tau-1)}, z^{(\tau)}, z^{(\tau+1)}, \cdots$が存在し，以下の条件を満たしているとする．$s(z^{(\tau)} → z^{(\tau+1)})$は状態$z^{(\tau)}$から状態$z^{(\tau+1)}$に移動する確率のことであり，{\bf{遷移確率}}と呼ぶ．
+\begin{eqnarray}
+	任意の値{\tau}に対して 　　&& \nonumber \\
+	　p(z^{(\tau)}) s(z^{(\tau)} → z^{(\tau+1)}) &=& p(z^{(\tau+1)}) s(z^{(\tau+1)} → z^{(\tau)}) \nonumber
+\end{eqnarray} 
+詳細釣り合い条件のもとに状態が遷移するときには，以下のことがいえる．
+\begin{itemize}
+	\item $p(z^{(\tau+1)}) > p(z^{(\tau+1)})であれば，\\
+	z^{(\tau)}よりも起こる可能性の少ないz^{(\tau+1)}に移動する遷移確率s(z^{(\tau)} → z^{(\tau+1)}は小さくなる$
+	\item $p(z^{(\tau)}) < p(z^{(\tau+1)})であれば，\\
+	z^{(\tau)}よりも起こる可能性の大きいz^{(\tau+1)}に移動する遷移確率s(z^{(\tau)} → z^{(\tau+1)}は大きくなる$
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{エルゴード性}
+「任意の2つの状態$z$と$z'$の間の遷移確率が有限個の0でない積で表すことができる」という性質のことを{\bf{エルゴード性}}という．つまり，有限回
+のステップで任意の2つの状態間を行き来できるという性質のこと，どんなところでも必ずたどり着けることを意味する\cite{wakui}．
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{ベイズの定理との関係}
+ベイズの定理を式(\ref{bayse})に示す．式(\ref{bayse_word})は式(\ref{bayse})を表す．
+\begin{eqnarray} 
+	P(\theta|Z) &=& \frac{P(Z|\theta)}{P(Z)} \cdot P(\theta) \label{bayse} \\
+	事後確率 &=& \frac{尤度}{データが得られる確率} \cdot 事前確率 \label{bayse_word}
+\end{eqnarray}
+データが得られる確率$P(Z)$は，母数である$\theta$を含んでいないため比例定数としてみることができる．これを考慮しないように変形すると以下の式が得られる．
+\begin{eqnarray}
+	P(\theta) \propto P(Z|\theta) \times P(\theta) \\
+	事後確率 \propto 尤度 \times 事前確率
+\end{eqnarray}
+連続変数であった場合は，式(\ref{bayse})は式(\ref{bayse_word})のようになる．
+\begin{eqnarray}
+	p(\theta|Z) &=& \frac{p(Z|\theta)}{p(X)} \cdot p(\theta) \\
+	事後分布 &=&  \frac{尤度}{データが得られる確率} \cdot 事前分布
+\end{eqnarray}
+ベイズの式は以下の式にも書き換えることができる．
+\begin{equation} \label{bayse_second}
+	p(\theta|Z) = \frac{p(Z|\theta)}{\int_{}^{} p(Z|\theta)p(\theta)d\theta} \cdot p(\theta)
+\end{equation}
+式(\ref{bayse_second})の分母の積分計算は，モデルが複雑な場合は解析的に解くことが困難になってしまう．そのため，積分計算の代わりにMCMCを用いてパラメータの推定を行う．
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{階層ベイズモデル}
+階層ベイズモデルとは，ベイズ法を用いて事後分布のパラメータを階層的に表した統計モデルのことである．現実の様々な事象は1つの確率分布で表すことは困難であるため，複数の確率分布を混同させることで複雑な事象を表現することができる．階層ベイズモデルを使用することで，個体差や環境差などを考慮して推定を行うことができる．\\
+　パラメータ$\theta$に対するパラメータ$\phi$を設定することで式(\ref{kaisou})のように書くことができる．
+\begin{equation} \label{kaisou}
+\begin{split}
+	p(\theta|Z) &\propto p(Z|\theta)p(\theta|\phi)p(\phi) \\
+	事後分布 &\propto 尤度 \times 事前分布 \times 超事前分布
+\end{split}
+\end{equation}
+ここで使用される$\phi$は超パラメータ(ハイパーパラメータ)と呼ばれ，$p(\phi)$のことを超事前分布と呼ぶ．これを用いることにより，パラメータ$\theta$にもばらつきが発生し個体差や環境差を表現することができる．
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{サンプリング手法}
+\subsection{Metroplisアルゴリズム}
+MetropolisアルゴリズムはMCMCの基本的なアルゴリズムで，Metropolis-Hastingsアルゴリズムのもととなるアルゴリズムである．\\
+　Metropolisアルゴリズムを以下に示す\cite{wakui}．
+\begin{itembox}[c]{Metropolisアルゴリズム}
+  	1.  初期値$z^{(0)}$をランダムに決定し，$p(z^{(0)})$を求める． \\ 
+	2.  現在の値を$z^{(\tau)}$とし，ランダムに$\varepsilon$を決めて次の値の候補$z^{*}$を$z^{*} = z^{(\tau)} + \varepsilon$に決定し，$p(z^{*})$を求める．\\
+	3.  遷移確率$r	= \frac {p(z^{*})}{p(z^{(\tau)})}$を決定する．\\
+	4. 条件により，値を更新する．
+	\begin{itemize}
+		\item  $r \ge 1$ならば$z^{(\tau+1)} = z^{*}$に更新する． 
+		\item  $r < 1$ならば区間0から1の一様乱数$n$を発生させる．
+		\begin{itemize}
+			\item	$r \ge n$ならば$z^{(\tau+1)} = z^{*}$に更新する． 
+			\item $r \ge n$でないなら$z^{(\tau+1)} = z^{(\tau)}$に更新する．
+		\end{itemize}
+	\end{itemize}
+	5.  $\tau = \tau + 1$して2に戻る．
+\end{itembox}
+現在の値よりも確率が高くなれば必ず受理され，低いときは確率$r$で棄却される．サンプリングを行った後，サンプリング開始からのある程度の区間は不安定であるためburn-in区間として削除する．
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Metropolis-Hastingsアルゴリズム}
+Metropolis-Hastingsアルゴリズムは，Metropolisアルゴリズムの確率$r$に関して提案分布$q()$を導入したものであり，Metropolisアルゴリズムを一般化したものである\cite{bib5}．提案分布$q()$とは，現在の値から次の値の候補を決めるために必要な確率分布である．\\
+Metropolis-Hastingsアルゴリズムを以下に示す．
+\begin{itembox}[c]{Metropolis-Hastingsアルゴリズム}
+  	1.  初期値$z^{(0)}$をランダムに決定し，$p(z^{(0)})$を求める． \\ 
+	2.  現在の値を$z^{(\tau)}$とし，ランダムに$\varepsilon$を決めて次の値の候補$z^{*}$を$z^{*} = z^{(\tau)} + \varepsilon$に決定し，$p(z^{*})$を求める．\\
+	3.  遷移確率$r	= \frac {p(z^{*})q(z^{(\tau)}|z^{*})}{p(z^{(\tau)})q(z^{*}|z^{(\tau)})}$を決定する．\\
+	4. 条件により，値を更新する． 
+	\begin{itemize}
+		\item $r \ge 1$ならば$z^{(\tau+1)} = z^{*}$に更新する． 
+		\item $r < 1$ならば乱数$n$を発生させる．
+		\begin{itemize}
+			\item $r \ge n$ならば$z^{(\tau+1)} = z^{*}$に更新する． 
+			\item $r \ge n$でないなら$z^{(\tau+1)} = z^{*}$に更新する．
+		\end{itemize}
+	\end{itemize}
+	5.  $\tau = \tau + 1$して2に戻る．
+ \end{itembox}
+ Metropolis-HastingsアルゴリズムもMetropolisアルゴリズム同様，サンプリング終了後にburn-in区間を削除する．
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Gibbsサンプリング}
+Gibbsサンプリングは，複数の確率分布のうち1つの確率分布以外を固定し条件付き分布としてサンプリングを行う．Gibbsサンプリングのアルゴリズムを以下に示す．\\
+　サンプリングしたい確率分布$p(\bm{Z}) = p(z_1, \cdots, z_M)$ について考える．
+\begin{itembox}[c]{Gibbsサンプリング--アルゴリズム}
+  	1.  確率変数$\bm{Z_{0}}$の初期値を設定する．\\ 
+	2. ステップ数$\tau = 1, \cdots, T$に対して以下を行う．\\
+	　-- $z_{1}^{(\tau+1)} \sim p(z_{1} | z_{2}^{(\tau)}, z_{3}^{(\tau)}, \cdots, z_{M}^{(\tau)})$をサンプリングする．\\ 
+	　-- $z_{2}^{(\tau+1)} \sim p(z_{2} | z_{1}^{(\tau+1)}, z_{3}^{(\tau)}, \cdots, z_{M}^{(\tau)})$をサンプリングする．\\
+	　　　\vdots \\
+	　-- $z_{j}^{(\tau+1)} \sim p(z_{j} | z_{1}^{(\tau)}, \cdots, z_{j-1}^{(\tau+1)}, z_{j+1}^{(\tau)}, \cdots, z_{M}^{(\tau)})$をサンプリングする．\\
+	　　　\vdots \\
+	　-- $z_{M}^{(\tau+1)} \sim p(z_{M} | z_{1}^{(\tau+1)}, z_{2}^{(\tau+1)}, \cdots, z_{M-1}^{(\tau+1)})$をサンプリングする．
+ \end{itembox}
+　 ギブスサンプリングの初期値設定には，EMアルゴリズムを用いたりランダムに決定する．最終的に初期値からある程度の区間はburn-in区間として切り捨てるため，あまり考えすぎなくて良い．\\ 
+　ギブスサンプリングは，メトロポリス・ヘイスティングス法の1つでもある．ギブスサンプリングの拡張として，Blocked Gibbs sampler,  Collapsed Gibbs samplerがある．\\
+ギブスサンプリングの特徴として，事前分布，事後分布，尤度の確率分布が表\ref{tab:gibbs}のように設定されている場合のみ効果を発揮する．
+\begin{table}[h]
+	\begin{center}
+    	\caption{ギブスサンプリングに用いる確率分布}
+    	\begin{tabular}{|c|c|c|} \hline
+      	事前分布       & 尤度              & 事後分布 \\ \hline \hline
+      	ベータ分布    & 二項分布       & ベータ分布 \\ \hline
+      	正規分布        & 正規分布       & 正規分布 \\ \hline
+	逆ガンマ分布 & 正規分布       & 逆ガンマ分布 \\ \hline
+	ガンマ分布    & ポアソン分布 & ガンマ分布 \\ \hline
+    	\end{tabular}
+	\label{tab:gibbs}
+  	\end{center}
+\end{table}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{thebibliography}{9}
+\addcontentsline{toc}{chapter}{参考文献}
+	\bibitem{}Logics of Blue, “ ベイズとMCMCと統計モデルの関係”, \url{http://logics-of-blue.com/ベイズとmcmcと統計モデルの関係}.
+	\bibitem{wakui}涌井良幸, ``道具としてのベイズ統計'', 日本実業出版社, pp.140--175, 235, 2014.%第7刷
+	 \bibitem{bib5} C.M.ビショップ（著）, 元田浩, 栗田多喜夫, 樋口知之, 松本裕治, 村田昇（監訳）,  ``パターン認識と機械学習 下 ベイズ理論による統計的予測'', 丸善出版, pp.252--261, 2013.%第3刷
+
+\end{thebibliography}
+
+
+\end{document}
